@@ -22,7 +22,9 @@ Gerenciamento inteligente de demanda para estações de recarga de veículos el�
 ---
 
 ## 🧩 O Desafio / Problema
- 
+
+Este estudo dedica-se a investigar a possibilidade de transformar dispositivos originalmente criados para uso doméstico em aplicações comerciais, focando no gerenciamento inteligente de demanda de potência, na implementação de sistemas de cobrança automatizados e na criação de interfaces voltadas a estabelecimentos como academias, shoppings e centros comerciais. Para firmar essa análise, o trabalho explora os pilares do ChargeGrid, estabelecendo uma conexão direta com o hardware da linha HCA G2. 
+
 O projeto parte de um cenário real: **o estacionamento de um shopping** que decide instalar carregadores para veículos elétricos.
  
 - Cada carregador consome **1 veículo = 11 kWh**.
@@ -30,7 +32,7 @@ O projeto parte de um cenário real: **o estacionamento de um shopping** que dec
 - O quadro de energia do setor, porém, tem um **limite de disjuntor de 40 kW**.
 **Resultado: "a conta não fecha."** A demanda (44 kW) ultrapassa a capacidade contratada (40 kW), gerando um **excedente de -4 kW** — ou seja, um problema físico e financeiro real: risco de desarme do disjuntor, sobrecarga da instalação e inviabilidade comercial de oferecer recarga para todas as vagas ao mesmo tempo.
  
-Foi para resolver exatamente esse gargalo que a **GoodWe desenvolveu uma solução junto com nós**: o **ChargeGrid Intelligence**.
+Foi para resolver exatamente esse obstáculo que a **GoodWe desenvolveu uma solução junto com nós**: o **ChargeGrid Intelligence**.
  
 ---
 
@@ -92,6 +94,7 @@ Quando a demanda solicitada ultrapassa o limite contratado, o sistema aciona o *
 - **Potência alocada:** 32,0 kW (demanda solicitada era 36,8 kW → rateio proporcional)
 - **Fonte da energia:** Rede (geração solar insuficiente no momento)
 - **Tarifa ao motorista:** R$ 2,20/kWh (preço indexado à origem da energia)
+
 Esse é um **comando automatizado real**: o algoritmo prioriza veículos com menor SOC (Vaga 01) e reduz a potência entregue a veículos quase cheios (Vagas 03 e 04), sem intervenção manual, respeitando o limite físico do disjuntor.
  
 ### 2.3 Inteligência preditiva (GoodWezinho AI)
@@ -107,11 +110,11 @@ Esse é um **comando automatizado real**: o algoritmo prioriza veículos com men
 - Load Balancing: distribuição "Solar-First" ativa (prioriza sempre consumir energia solar antes da rede).
 - Referência normativa: **Resolução Normativa ANEEL nº 1.000/2021** (que rege a tarifação de energia e o uso da rede por unidades geradoras/consumidoras).
 - Módulo de **previsão de geração solar e demanda para os próximos 60 minutos**, usado para antecipar picos e ajustar o rateio antes que o problema físico aconteça.
-**Comandos automatizados disponíveis por vaga:** Iniciar / Parar recarga individualmente, além de **Comandos Globais da Estação** (parar/iniciar toda a estação de uma vez).
+- **Comandos automatizados disponíveis por vaga:** Iniciar / Parar recarga individualmente, além de **Comandos Globais da Estação** (parar/iniciar toda a estação de uma vez).
  
 ### 2.4 Simulação de hardware (protótipo)
  
-Na bancada de simulação ("ChargeGrid conectando..."), o protótipo demonstra o comportamento do sistema de bateria/carregador em funcionamento, com telas de celular mostrando o **percentual de carga evoluindo (69% → 70%)** durante a demonstração — validando que a lógica de controle responde a dados em tempo real, e não apenas a uma interface estática.
+Na bancada de simulação pelo aplicativo Woke ("ChargeGrid conectando..."), o protótipo demonstra o comportamento do sistema de bateria/carregador em funcionamento, com telas de celular mostrando o **percentual de carga evoluindo (69% → 70%)** durante a demonstração — validando que a lógica de controle responde a dados em tempo real, e não apenas a uma interface estática.
  
 ---
  
