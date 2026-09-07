@@ -135,3 +135,32 @@ Na bancada de simulação pelo aplicativo Woke ("ChargeGrid conectando..."), o p
 ---
  
 ## 4. Arquitetura da solução e fluxo de sistema
+
+A arquitetura pode ser lida em **4 blocos simples, de cima para baixo**: primeiro a energia é gerada, depois ela é distribuída aos carregadores, em seguida os dados sobem para a nuvem para decisão automática, e por fim o motorista interage com tudo isso pelo aplicativo.
+ 
+```mermaid
+flowchart TD
+    A["☀️ Energia<br>Painel solar + Bateria + Rede"] --> B["🔌 Inversor Híbrido GoodWe"]
+    B --> C["⚡ Quadro de Distribuição<br>(limite do disjuntor)"]
+    C --> D["🚗 4 Vagas de Recarga<br>(Wallboxes)"]
+    D --> E["☁️ Nuvem GoodWe<br>EVSE Manager B2B + IA preditiva"]
+    E --> F["🤖 Rateio automático de potência"]
+    F --> C
+    E --> G["📱 App do Motorista<br>(mapa, recarga, pagamento)"]
+```
+ 
+**Como ler o fluxo:**
+ 
+| Etapa | O que acontece |
+|---|---|
+| 1️⃣ Energia | Sol, bateria e rede alimentam o inversor GoodWe, que decide a melhor fonte disponível |
+| 2️⃣ Distribuição | O inversor entrega energia ao quadro, que reparte a potência entre as 4 vagas, respeitando o limite físico do disjuntor |
+| 3️⃣ Nuvem | Os dados de cada vaga (consumo, SOC, geração) sobem para o EVSE Manager B2B, onde a IA preditiva analisa a situação |
+| 4️⃣ Rateio automático | Se a demanda ultrapassa o limite, a nuvem manda um comando de volta ao quadro, redistribuindo a potência entre as vagas — fechando o ciclo |
+| 5️⃣ App do motorista | Em paralelo, o motorista acompanha localização, recarga e cobrança pelo aplicativo, que também consulta a mesma nuvem |
+ 
+> 💡 A identificação do veículo e o pagamento (Veículo → Conta → Pagamento, detalhados na seção 1) acontecem dentro do bloco "4 Vagas de Recarga", no momento em que o cabo é conectado — por isso não aparecem como uma camada separada neste diagrama simplificado.
+ 
+---
+
+## 5.
