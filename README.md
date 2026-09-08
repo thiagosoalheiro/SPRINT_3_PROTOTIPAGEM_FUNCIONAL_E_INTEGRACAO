@@ -134,33 +134,139 @@ Na bancada de simulação pelo aplicativo Woke ("ChargeGrid conectando..."), o p
  
 ---
  
-## 4. Arquitetura da solução e fluxo de sistema
+## 4. Arquitetura da Solução e Fluxo de Carregamento
 
-A arquitetura pode ser lida em **4 blocos simples, de cima para baixo**: primeiro a energia é gerada, depois ela é distribuída aos carregadores, em seguida os dados sobem para a nuvem para decisão automática, e por fim o motorista interage com tudo isso pelo aplicativo.
- 
+O fluxo de funcionamento descreve a jornada completa desde a chegada do veículo elétrico à vaga até o encerramento da sessão de carga, integrando a bancada física (simulada via ESP32), o backend em nuvem (Firebase) e a interface mobile do motorista.
+
 ```mermaid
 flowchart TD
-    A["☀️ Energia<br>Painel solar + Bateria + Rede"] --> B["🔌 Inversor Híbrido GoodWe"]
-    B --> C["⚡ Quadro de Distribuição<br>(limite do disjuntor)"]
-    C --> D["🚗 4 Vagas de Recarga<br>(Wallboxes)"]
-    D --> E["☁️ Nuvem GoodWe<br>EVSE Manager B2B + IA preditiva"]
-    E --> F["🤖 Rateio automático de potência"]
-    F --> C
-    E --> G["📱 App do Motorista<br>(mapa, recarga, pagamento)"]
+    A["🚗 Chegada do Veículo & Conexão do Cabo CCS"] --> B["📟 Leitura EVCCID & Telemetria Inicial<br>(Simulada pelo ESP32)"]
+    B --> C["☁️ Conexão Firebase<br>(Criação do Registro de Recarga: status 'Pendente')"]
+    C --> D["📱 Identificação da Sessão & Checkout no App"]
+    D --> E["💳 Confirmação do Pagamento (Pix / Sem Parar)"]
+    E --> F["☁️ Atualização no Firebase<br>(Status alterado para 'Pagamento Confirmado / Liberado')"]
+    F --> G["🔌 ESP32 Identifica Liberação em Nuvem<br>& Aciona Início da Recarga"]
+    G --> H["📊 Telemetria Contínua em Tempo Real<br>(ESP32 ➔ Firebase ➔ App / Dashboard B2B)"]
+    H --> I{"⏹️ Condição de Parada Ativa?"}
+    I -- "Não (Recarregando)" --> H
+    I -- "Sim (Interrupção Manual pelo App OU SOC Atinge Meta)" --> J["🏁 Encerramento da Recarga & Envio do Comprovante"]
+
 ```
- 
-**Como ler o fluxo:**
- 
-| Etapa | O que acontece |
-|---|---|
-| 1️⃣ Energia | Sol, bateria e rede alimentam o inversor GoodWe, que decide a melhor fonte disponível |
-| 2️⃣ Distribuição | O inversor entrega energia ao quadro, que reparte a potência entre as 4 vagas, respeitando o limite físico do disjuntor |
-| 3️⃣ Nuvem | Os dados de cada vaga (consumo, SOC, geração) sobem para o EVSE Manager B2B, onde a IA preditiva analisa a situação |
-| 4️⃣ Rateio automático | Se a demanda ultrapassa o limite, a nuvem manda um comando de volta ao quadro, redistribuindo a potência entre as vagas — fechando o ciclo |
-| 5️⃣ App do motorista | Em paralelo, o motorista acompanha localização, recarga e cobrança pelo aplicativo, que também consulta a mesma nuvem |
- 
-> 💡 A identificação do veículo e o pagamento (Veículo → Conta → Pagamento, detalhados na seção 1) acontecem dentro do bloco "4 Vagas de Recarga", no momento em que o cabo é conectado — por isso não aparecem como uma camada separada neste diagrama simplificado.
+
+**Detalhamento do Fluxo:**
+
+| Etapa | Ação / Componente | O que acontece no sistema |
+| --- | --- | --- |
+| **1. Conexão & Identificação** | Veículo ➔ ESP32 | O motorista conecta o cabo. O microcontrolador ESP32 lê o ID do veículo (EVCCID) e detecta a presença física na vaga. |
+| **2. Registro de Recarga** | ESP32 ➔ Firebase | O ESP32 envia os dados iniciais do ponto de carga e cria um novo documento de sessão no Firebase Realtime Database com status `pendente`. |
+| **3. Notificação & Pagamento** | App Mobile ➔ Firebase | O aplicativo identifica a vaga conectada, exibe o valor/tarifa e solicita a confirmação do pagamento pelo motorista (ex.: Pix). |
+| **4. Sinalização de Liberação** | Firebase ➔ ESP32 | Com o pagamento confirmado, o Firebase atualiza a flag da sessão para `liberado`. O ESP32, escutando a nuvem em tempo real, detecta a mudança e aciona os relés de carregamento. |
+| **5. Telemetria em Tempo Real** | ESP32 ➔ Nuvem ➔ App | Durante a recarga, o ESP32 transmite continuamente os parâmetros de SOC (%), potência (kW), corrente e consumo acumulado (kWh). Os dados sobem para o Firebase e são exibidos instantaneamente na tela do aplicativo e no Dashboard B2B. |
+| **6. Encerramento Flexível** | App / ESP32 ➔ Firebase | A recarga pode ser finalizada automaticamente ao atingir 100% (ou a meta estipulada) ou **interrompida manualmente a qualquer momento pelo aplicativo**, garantindo controle total ao usuário. |
  
 ---
+### 4.1 Interfaces e Protótipos Funcionais
 
-## 5.
+#### A. Painel Web de Gestão B2B (`GOODWE EVSE Manager B2B`)
+O painel de controle executivo (Web Dashboard) sincroniza via **Firebase** os parâmetros de operação do estacionamento. Ele exibe os indicadores de geração solar real-time, demanda total da estação e o teto do disjuntor. Além disso, disponibiliza os seletores para acionamento ou interrupção do carregamento por vaga individual e comandos globais da estação.
+
+<img width="1437" height="849" alt="image" src="https://github.com/user-attachments/assets/f8a38790-6f95-410d-8c04-bf20e8f7e46e" />
+
+#### B. Aplicativo Mobile do Motorista (Integrado ao SEMS e Firebase)
+
+O aplicativo entrega a experiência completa do motorista de veículos elétricos, combinando facilidade de navegação com padrões modernos de segurança digital:
+
+1. **Sistema de Autenticação e Verificação por E-mail:**
+* O acesso é protegido via **Firebase Authentication**.
+* O cadastro de novos motoristas **exige obrigatoriamente a confirmação por e-mail** (verificação de link) antes da liberação do primeiro acesso, prevenindo contas falsas e garantindo a rastreabilidade das transações financeiras.
+
+2. **Containerização e Isolamento de Dados (*Security Rules*):**
+* O banco de dados NoSQL (Firebase) é estruturado de forma estritamente "containerizada", vinculando cada registro de usuário ao seu identificador único (`auth.uid`).
+* Através das **Regras de Segurança do Firebase** (*Security Rules*), cada motorista tem permissão de leitura e escrita **exclusivamente no seu próprio nó de dados** (`/users/{uid}` e `/recargas/{uid}`). Isso garante que histórico de recargas, dados de pagamento e veículos cadastrados fiquem completamente isolados e inacessíveis para terceiros, atendendo às diretrizes da LGPD.
+
+3. **Jornada de Recarga no App:**
+* **Localização & Status:** Mapa interativo das estações (ex: Shopping Vila Olímpia) com rotas integradas via Waze e indicação de ocupação das vagas.
+* **Acompanhamento Real-Time:** Exibição contínua da potência instantânea (kW), progresso da bateria (%), tempo decorrido e botão de **Interrupção Manual** da sessão.
+* **Checkout Desacoplado:** Telas de confirmação de pagamento automatizado via Pix antes da liberação do hardware pelo ESP32.
+
+| Navegação e Mapa de Carregadores | Progresso do Carregamento em Tempo Real | Confirmação de Pagamento Automatizado |
+| :---: | :---: | :---: |
+| <img width="372" height="679" alt="image" src="https://github.com/user-attachments/assets/4f028cb6-3ec1-4697-b3da-80672d1c02c5" /> | <img width="359" height="719" alt="image" src="https://github.com/user-attachments/assets/6c7db1cb-7942-4d05-9f79-f03ad91e1ff7" /> | <img width="358" height="716" alt="image" src="https://github.com/user-attachments/assets/1c8a0a19-4565-48e3-b1e6-774689e0b4db" /> |
+
+#### C. Simulação de Hardware de Bancada (ESP32 via Wokwi)
+Para homologação das regras de *Load Balancing* e protocolo de comunicação, foi desenvolvido um circuito emulador no **Wokwi** controlado por um **ESP32**:
+- **Potenciômetros:** Emulam a variação do estado de carga (SOC) e da demanda solicitada em cada uma das 4 vagas.
+- **Push Buttons:** Simulam a conexão/desconexão física do cabo CCS no veículo.
+- **Display LCD 16x2:** Exibe os dados instantâneos locais (`11.0/40.0kW - Vagas 1/4 SOLAR`), transmitindo a telemetria via OCPP e Firebase para o sistema em nuvem.
+
+<img width="771" height="522" alt="image" src="https://github.com/user-attachments/assets/55349b7f-9b4c-4b5b-ae70-c50c95e4f244" />
+
+---
+
+## 5. Justificativa Técnica das Escolhas
+
+A seleção das tecnologias adotadas no projeto **ChargeGrid Intelligence** atende a critérios rigorosos de escalabilidade, interoperabilidade, segurança da informação e viabilidade financeira:
+
+1. **Padrão ISO 15118 (EVCCID / CCS) vs. Leitura de Placas (OCR / Câmeras):**
+   * *Justificativa:* O padrão ISO 15118 estabelece o conceito *Plug & Charge*, no qual o veículo é identificado diretamente pelo hardware do cabo de recarga por meio de um endereço único de hardware (EVCCID) criptografado por certificados PKI. Isso elimina a necessidade de instalar câmeras OCR de alto custo em cada vaga, evita falhas por iluminação e garante conformidade estrita com a privacidade de dados (LGPD), sem gravar placas ou imagem dos motoristas.
+
+2. **Protocolo OCPP (Open Charge Point Protocol) & Firebase:**
+   * *Justificativa:* A utilização do protocolo aberto OCPP garante que a infraestrutura desenvolvida seja interoperável com qualquer modelo de Wallbox comercial da GoodWe. A sincronização em tempo real via Firebase NoSQL garante latência inferior a 200 ms na comunicação entre o microcontrolador ESP32 e o dashboard B2B.
+
+3. **Arquitetura Solar-First com Curva CC-CV de Carregamento:**
+   * *Justificativa:* A lógica algorítmica prioriza a energia fotovoltaica do inversor GoodWe para baratear a tarifa. Além disso, o software monitora a curva de carga das baterias dos veículos (fase de Corrente Constante - Tensão Constante / CC-CV). Ao detectar que um veículo atinge 95% do SOC, o sistema reduz gradativamente sua potência para evitar sobreaquecimento e degradação celular, realocando o excedente de potência disponível para os veículos com menor carga.
+
+---
+
+## 6. Resultados e Dados Funcionais Apresentados
+
+O protótipo integrado do ChargeGrid Intelligence demonstrou capacidade total de resolução do problema físico de sobrecarga elétrica, além de apresentar viabilidade comercial atrativa para os estabelecimentos B2B.
+
+### 6.1 Resultados de Desempenho Técnico
+* **Mitigação do Excedente:** Em cenários de estresse máximo (4 veículos de 11 kW tentando consumir 44 kW em um painel de 40 kW), a automação de rateio reduziu a demanda ativa para **32,0 kW**, operando com **100% de margem de segurança** em relação ao disjuntor.
+* **Priorização Inteligente:** Veículos com bateria crítica (SOC em 34%) mantiveram taxa máxima de recarga (11,0 kW), enquanto veículos em nível avançado (SOC > 88%) sofreram modulação automática para 3,7 kW - 6,3 kW.
+
+### 6.2 Análise de Viabilidade Financeira (Business Case para Lojistas / Shoppings)
+A validação do modelo financeiro para a instalação de uma estação de 4 vagas revelou um payback acelerado e alta atratividade de investimento:
+
+| Parâmetro Financeiro | Valor Medido / Estimado |
+|---|---|
+| **Investimento Inicial (CAPEX)** | R$ 60.000,00 *(Hardware GoodWe, ESP32 e instalação)* |
+| **Receita Líquida Mensal Estimada** | R$ 4.455,00 / mês *(Margem sob recarga e tarifa dinâmica)* |
+| **Tempo de Retorno (Payback)** | **14 meses** |
+
+### 6.3 Roadmap de Desenvolvimento
+* **Agosto (Concluído):** Desenvolvimento do firmware ESP32, modelagem da base Firebase, dashboard B2B e algoritmo de rateio.
+* **Setembro (Em andamento):** Montagem da maquete física de 4 vagas funcionais para testes de medição direta.
+* **Outubro (Planejado):** Integração dos serviços de pagamento e rotas nativas com ecossistemas automotivos **Android Auto** e **Apple CarPlay**.
+
+---
+
+## 7. Conexão com os Conteúdos da Disciplina
+
+O desenvolvimento da **Sprint 3** consolidou os conceitos teóricos e práticos abordados nas matérias da matriz curricular:
+
+1. **Pensamento Computacional e Automação com Python:**
+   * Implementação de estruturas lógicas condicionais e algoritmos de otimização para o cálculo proporcional de rateio de potência.
+   * Criação do módulo preditivo (*GoodWezinho AI*) para análise estocástica de geração fotovoltaica com base na **Resolução Normativa ANEEL nº 1.000/2021**.
+
+2. **Soluções em Energias Renováveis e Sustentáveis:**
+   * Gerenciamento de matriz energética híbrida (Solar Photovoltaic + BESS Storage + Grid).
+   * Aplicação de estratégias de *Peak Shaving* (supressão de picos de demanda) e *Load Balancing* para mitigar o impacto de infraestruturas pesadas de mobilidade elétrica na rede de distribuição urbana.
+
+3. **Internet das Coisas (IoT) e Sistemas Embarcados:**
+   * Programação de microcontroladores ESP32 utilizando bibliotecas de comunicação assíncrona, integração de sensores/atuadores e envio de telemetria via nuvem.
+
+---
+
+## 📝 Considerações Finais
+
+O projeto **ChargeGrid Intelligence** comprova que a transformação de equipamentos de linha residencial/comercial GoodWe em uma rede B2B inteligente de recarga é plenamente viável, segura e altamente rentável.
+
+Através do alinhamento entre a camada física de potência (Inversores Híbridos, Baterias SEC1000S e Wallboxes HCA G2), a eletrônica embarcada (ESP32 via ISO 15118) e a nuvem B2B (Firebase/EVSE Manager), eliminou-se o gargalo físico de sobrecarga sem a necessidade de obras dispendiosas de ampliação da rede elétrica. A solução promove a sustentabilidade energética, maximiza a utilização de fontes renováveis e oferece uma jornada fluida e segura para o usuário final e para o operador comercial.
+
+
+
+
+
+
