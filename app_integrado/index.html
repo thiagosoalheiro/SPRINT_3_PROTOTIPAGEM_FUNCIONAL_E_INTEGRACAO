@@ -1,0 +1,927 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="./vendor/leaflet/leaflet.css">
+<script src="./vendor/leaflet/leaflet.js"></script>
+<div id="sems-charge-integration">
+  <style>
+    #sems-charge-integration {
+      --semc-bg: #0f1012;
+      --semc-surface: #1a1c1f;
+      --semc-surface-soft: #222428;
+      --semc-border: #2d3035;
+      --semc-text: #f4f5f6;
+      --semc-muted: #8e9299;
+      --semc-red: #f03243;
+      --semc-green: #32d65b;
+      --semc-yellow: #e3a008;
+      --semc-blue: #67a4ff;
+      width: 100%;
+      color: var(--semc-text);
+      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    }
+    #sems-charge-integration * { box-sizing: border-box; }
+    #sems-charge-integration .semc-wrap { display: grid; justify-items: center; width: 100%; }
+    #sems-charge-integration .semc-phone {
+      display: flex;
+      flex-direction: column;
+      width: min(100%, 390px);
+      height: calc(100vh - 16px);
+      height: min(860px, calc(100dvh - 16px));
+      overflow: hidden;
+      border: 1px solid var(--semc-border);
+      border-radius: 28px;
+      background: var(--semc-bg);
+      box-shadow: 0 20px 48px rgba(0,0,0,.45);
+    }
+    #sems-charge-integration .semc-header { padding: 24px 18px 14px; }
+    #sems-charge-integration .semc-header,
+    #sems-charge-integration .semc-module-tabs,
+    #sems-charge-integration .semc-bottom { flex: 0 0 auto; }
+    #sems-charge-integration .semc-header-logo {
+      display: block;
+      width: 58px;
+      height: 46px;
+      margin: 0 auto 5px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 9px rgba(240,48,67,.22));
+    }
+    #sems-charge-integration .semc-head-row,
+    #sems-charge-integration .semc-title-row,
+    #sems-charge-integration .semc-detail,
+    #sems-charge-integration .semc-rule {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    #sems-charge-integration .semc-head-row { justify-content: center; text-align: center; }
+    #sems-charge-integration .semc-head-row strong { width: 100%; font-weight: 500; white-space: nowrap; }
+    #sems-charge-integration .semc-head-actions { display: flex; align-items: center; gap: 16px; color: var(--semc-text); }
+    #sems-charge-integration .semc-head-actions svg { width: 23px; height: 23px; }
+    #sems-charge-integration .semc-header p,
+    #sems-charge-integration .semc-subtitle { margin: 4px 0 0; color: var(--semc-muted); }
+    #sems-charge-integration .semc-running {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 10px;
+      color: var(--semc-green);
+      font-weight: 500;
+    }
+    #sems-charge-integration .semc-running::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    #sems-charge-integration .semc-module-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      padding: 0 16px 12px;
+    }
+    #sems-charge-integration .semc-module-tabs button {
+      min-height: 44px;
+      padding: 8px 5px;
+      border: 0;
+      border-bottom: 2px solid transparent;
+      color: var(--semc-muted);
+      background: transparent;
+      font: inherit;
+      cursor: pointer;
+    }
+    #sems-charge-integration .semc-module-tabs button[aria-pressed="true"] {
+      color: var(--semc-text);
+      border-bottom-color: var(--semc-red);
+    }
+    #sems-charge-integration .semc-screen {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 12px 16px 18px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    #sems-charge-integration h2,
+    #sems-charge-integration h3,
+    #sems-charge-integration p { margin: 0; }
+    #sems-charge-integration h2,
+    #sems-charge-integration h3 { font-weight: 500; }
+    #sems-charge-integration .semc-title-row { align-items: flex-start; margin-bottom: 12px; }
+    #sems-charge-integration .semc-map {
+      position: relative;
+      height: 300px;
+      overflow: hidden;
+      border-radius: 18px;
+      background: var(--semc-surface);
+      isolation: isolate;
+    }
+    #sems-charge-integration .semc-map .leaflet-tile-pane {
+      filter: none;
+    }
+    #sems-charge-integration .semc-map .leaflet-control-attribution {
+      color: #c5c7cb;
+      background: rgba(15,16,18,.82);
+      font-size: 9px;
+    }
+    #sems-charge-integration .semc-map .leaflet-control-attribution a { color: #dfe1e4; }
+    #sems-charge-integration .semc-map-legend {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 500;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 9px;
+      max-width: calc(100% - 20px);
+      padding: 7px 9px;
+      border: 1px solid var(--semc-border);
+      border-radius: 10px;
+      color: var(--semc-text);
+      background: rgba(15,16,18,.92);
+      font-size: 10px;
+      pointer-events: none;
+    }
+    #sems-charge-integration .semc-map-legend span { display: inline-flex; align-items: center; gap: 4px; }
+    #sems-charge-integration .semc-map-legend i { width: 8px; height: 8px; border-radius: 50%; }
+    #sems-charge-integration .semc-leaflet-icon {
+      border: 0;
+      background: transparent;
+    }
+    #sems-charge-integration .semc-leaflet-icon span {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 3px solid var(--semc-text);
+      border-radius: 50%;
+      color: var(--semc-text);
+      box-shadow: 0 4px 10px rgba(0,0,0,.35);
+      font-size: 17px;
+    }
+    #sems-charge-integration .semc-leaflet-icon .green { background: var(--semc-green); }
+    #sems-charge-integration .semc-leaflet-icon .yellow { background: var(--semc-yellow); }
+    #sems-charge-integration .semc-leaflet-icon .red { background: var(--semc-red); }
+    #sems-charge-integration .semc-leaflet-icon .gray { background: #7d828a; }
+    #sems-charge-integration .semc-real-location {
+      width: 18px;
+      height: 18px;
+      border: 4px solid var(--semc-text);
+      border-radius: 50%;
+      background: var(--semc-blue);
+      box-shadow: 0 0 0 7px rgba(103,164,255,.2);
+    }
+    #sems-charge-integration .semc-map-fallback { padding: 72px 22px; color: var(--semc-muted); text-align: center; }
+    #sems-charge-integration .semc-detail { min-height: 56px; padding: 10px 0; }
+    #sems-charge-integration .semc-detail span { color: var(--semc-muted); }
+    #sems-charge-integration .semc-map-actions { display: grid; gap: 9px; }
+    #sems-charge-integration .semc-map-actions .semc-secondary { display: grid; width: 100%; place-items: center; text-decoration: none; }
+    #sems-charge-integration .semc-primary {
+      width: 100%;
+      min-height: 46px;
+      padding: 11px 14px;
+      border: 0;
+      border-radius: 13px;
+      color: var(--semc-text);
+      background: var(--semc-red);
+      font: inherit;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    #sems-charge-integration .semc-primary:disabled { opacity: .55; cursor: default; }
+    #sems-charge-integration .semc-session-actions {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+    }
+    #sems-charge-integration .semc-charge-choice { margin-bottom: 6px; }
+    #sems-charge-integration .semc-charge-choice label,
+    #sems-charge-integration .semc-charge-target,
+    #sems-charge-integration .semc-charge-error { color: var(--semc-muted); font-size: 12px; }
+    #sems-charge-integration .semc-charge-input-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    #sems-charge-integration .semc-charge-input {
+      min-width: 0;
+      min-height: 40px;
+      padding: 9px 10px;
+      border: 1px solid var(--semc-border);
+      border-radius: 11px;
+      color: var(--semc-text);
+      background: var(--semc-surface);
+      font: inherit;
+    }
+    #sems-charge-integration .semc-charge-submit {
+      min-height: 40px;
+      padding: 9px 14px;
+      border: 0;
+      border-radius: 11px;
+      color: var(--semc-text);
+      background: var(--semc-red);
+      font: inherit;
+      cursor: pointer;
+    }
+    #sems-charge-integration .semc-charge-target { display: block; margin-top: 7px; }
+    #sems-charge-integration .semc-charge-error { display: block; margin-top: 5px; color: var(--semc-red); }
+    #sems-charge-integration .semc-back { min-height: 36px; margin-bottom: 12px; padding: 7px 0; border: 0; color: var(--semc-muted); background: transparent; font: inherit; cursor: pointer; }
+    #sems-charge-integration .semc-qr-identified { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 13px; border-radius: 15px; background: var(--semc-surface); }
+    #sems-charge-integration .semc-qr-symbol { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; border-radius: 11px; color: var(--semc-text); background: var(--semc-red); }
+    #sems-charge-integration .semc-qr-identified span,
+    #sems-charge-integration .semc-session-target { color: var(--semc-muted); }
+    #sems-charge-integration .semc-checkout-summary { margin: 14px 0; padding: 4px 14px; border-radius: 15px; background: var(--semc-surface); }
+    #sems-charge-integration .semc-checkout-row { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid var(--semc-border); }
+    #sems-charge-integration .semc-checkout-row:last-child { border-bottom: 0; }
+    #sems-charge-integration .semc-checkout-row span { color: var(--semc-muted); }
+    #sems-charge-integration .semc-checkout-row strong { text-align: right; font-weight: 500; }
+    #sems-charge-integration .semc-payment { display: grid; gap: 8px; margin-bottom: 14px; }
+    #sems-charge-integration .semc-payment label { color: var(--semc-muted); font-size: 12px; }
+    #sems-charge-integration .semc-payment select { width: 100%; min-height: 44px; padding: 9px 10px; border: 1px solid var(--semc-border); border-radius: 11px; color: var(--semc-text); background: var(--semc-surface); font: inherit; }
+    #sems-charge-integration .semc-state-center { display: grid; justify-items: center; gap: 12px; padding: 46px 12px 20px; text-align: center; }
+    #sems-charge-integration .semc-state-symbol { display: grid; width: 58px; height: 58px; place-items: center; border-radius: 50%; color: var(--semc-bg); background: var(--semc-green); font-size: 28px; font-weight: 500; }
+    #sems-charge-integration .semc-state-center p { color: var(--semc-muted); }
+    #sems-charge-integration .semc-state-center .semc-primary { margin-top: 8px; }
+    #sems-charge-integration .semc-inline-actions { display: grid; gap: 9px; margin-top: 14px; }
+    #sems-charge-integration .semc-danger { width: 100%; min-height: 44px; padding: 10px 14px; border: 1px solid var(--semc-red); border-radius: 13px; color: var(--semc-red); background: transparent; font: inherit; cursor: pointer; }
+    #sems-charge-integration .semc-quiet { width: 100%; min-height: 42px; padding: 9px 12px; border: 0; color: var(--semc-muted); background: transparent; font: inherit; cursor: pointer; }
+    #sems-charge-integration .semc-inline-alert { margin-top: 8px; color: var(--semc-red); font-size: 12px; }
+    #sems-charge-integration .semc-history-title { margin: 18px 0 6px; }
+    #sems-charge-integration .semc-secondary {
+      min-height: 46px;
+      padding: 11px 14px;
+      border: 1px solid var(--semc-border);
+      border-radius: 13px;
+      color: var(--semc-text);
+      background: var(--semc-surface);
+      font: inherit;
+      cursor: pointer;
+    }
+    #sems-charge-integration .semc-ring {
+      display: grid;
+      width: 178px;
+      height: 178px;
+      margin: 16px auto 24px;
+      place-items: center;
+      border-radius: 50%;
+      background: conic-gradient(var(--semc-green) 0 var(--semc-progress, 24%), var(--semc-surface-soft) var(--semc-progress, 24%) 100%);
+      transition: background .25s ease;
+    }
+    #sems-charge-integration .semc-ring-inner {
+      display: grid;
+      width: 148px;
+      height: 148px;
+      place-items: center;
+      border-radius: 50%;
+      text-align: center;
+      background: var(--semc-bg);
+    }
+    #sems-charge-integration .semc-ring-inner strong,
+    #sems-charge-integration .semc-ring-inner span { display: block; }
+    #sems-charge-integration .semc-ring-inner strong { color: var(--semc-green); font-weight: 500; }
+    #sems-charge-integration .semc-ring-inner span { margin-top: 4px; color: var(--semc-muted); }
+    #sems-charge-integration .semc-two {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    #sems-charge-integration .semc-metric,
+    #sems-charge-integration .semc-rules {
+      padding: 15px;
+      border-radius: 15px;
+      background: var(--semc-surface);
+    }
+    #sems-charge-integration .semc-metric span,
+    #sems-charge-integration .semc-metric strong { display: block; }
+    #sems-charge-integration .semc-metric span { color: var(--semc-muted); }
+    #sems-charge-integration .semc-metric strong { margin-top: 5px; font-weight: 500; }
+    #sems-charge-integration .semc-rule { align-items: flex-start; padding: 13px 0; border-bottom: 1px solid var(--semc-border); }
+    #sems-charge-integration .semc-rule:last-child { border-bottom: 0; }
+    #sems-charge-integration .semc-rule span { display: block; margin-top: 3px; color: var(--semc-muted); }
+    #sems-charge-integration .semc-rule > strong { max-width: 42%; text-align: right; font-weight: 500; }
+    #sems-charge-integration .semc-bottom {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      min-height: 84px;
+      border-top: 1px solid var(--semc-border);
+      background: var(--semc-surface);
+    }
+    #sems-charge-integration .semc-nav {
+      display: grid;
+      min-width: 0;
+      place-items: center;
+      align-content: center;
+      gap: 7px;
+      border: 0;
+      color: var(--semc-muted);
+      background: transparent;
+      font: inherit;
+    }
+    #sems-charge-integration .semc-nav span { font-size: 11px; }
+    #sems-charge-integration .semc-nav > svg,
+    #sems-charge-integration .semc-nav-symbol { width: 25px; height: 25px; stroke-width: 2.1; }
+    #sems-charge-integration .semc-source-icon {
+      display: block;
+      width: 29px;
+      height: 29px;
+      overflow: hidden;
+      background-image: url('./ImagemGW/sems-nav-icons-transparent.png');
+      background-repeat: no-repeat;
+      background-size: 230px auto;
+      background-position-y: -30px;
+    }
+    #sems-charge-integration .semc-source-icon.home {
+      background-image: url('./ImagemGW/sems-home-icon-transparent.png');
+      background-size: contain;
+      background-position: center;
+    }
+    #sems-charge-integration .semc-source-icon.devices { background-position-x: -71px; }
+    #sems-charge-integration .semc-source-icon.services { background-position-x: -134px; }
+    #sems-charge-integration .semc-source-icon.account { background-position-x: -188px; }
+    #sems-charge-integration .semc-nav.is-charge { color: var(--semc-red); }
+    #sems-charge-integration .semc-nav.is-charge > span:last-child { color: var(--semc-text); font-weight: 500; }
+    #sems-charge-integration.semc-onboarding .semc-header,
+    #sems-charge-integration.semc-onboarding .semc-module-tabs,
+    #sems-charge-integration.semc-onboarding .semc-bottom { display: none; }
+    #sems-charge-integration.semc-onboarding .semc-screen {
+      display: grid;
+      min-height: 0;
+      padding: 28px 22px;
+      place-items: center;
+    }
+    #sems-charge-integration .semc-access { width: 100%; text-align: center; }
+    #sems-charge-integration .semc-access-brand { margin-bottom: 34px; color: var(--semc-red); font-size: 22px; font-weight: 600; letter-spacing: .02em; }
+    #sems-charge-integration .semc-extension-symbol {
+      display: grid;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 18px;
+      place-items: center;
+      border: 1px solid var(--semc-border);
+      border-radius: 22px;
+      color: var(--semc-red);
+      background: var(--semc-surface);
+    }
+    #sems-charge-integration .semc-extension-symbol svg { width: 42px; height: 42px; stroke-width: 1.8; }
+    #sems-charge-integration .semc-access h2 { margin-bottom: 8px; }
+    #sems-charge-integration .semc-access > p { max-width: 290px; margin: 0 auto 24px; color: var(--semc-muted); line-height: 1.45; }
+    #sems-charge-integration .semc-access-actions { display: grid; gap: 8px; }
+    #sems-charge-integration .semc-access-form { display: grid; gap: 14px; text-align: left; }
+    #sems-charge-integration .semc-access-form label { display: grid; gap: 7px; color: var(--semc-muted); font-size: 12px; }
+    #sems-charge-integration .semc-access-form .semc-primary { margin-top: 4px; }
+    @media (max-width: 600px) {
+      #sems-charge-integration {
+        position: fixed;
+        inset: 0;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+        background: var(--semc-bg);
+      }
+      #sems-charge-integration .semc-wrap { width: 100%; height: 100%; justify-items: stretch; }
+      #sems-charge-integration .semc-phone {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      #sems-charge-integration .semc-header { padding: calc(8px + env(safe-area-inset-top)) 14px 6px; }
+      #sems-charge-integration .semc-header-logo { width: 44px; height: 34px; margin-bottom: 2px; }
+      #sems-charge-integration .semc-running { margin-top: 4px; font-size: 13px; }
+      #sems-charge-integration .semc-module-tabs { padding: 0 14px 4px; }
+      #sems-charge-integration .semc-module-tabs button { min-height: 36px; padding: 5px; }
+      #sems-charge-integration .semc-screen { padding: 6px 14px 8px; overflow: hidden; }
+      #sems-charge-integration .semc-title-row { margin-bottom: 6px; }
+      #sems-charge-integration h2 { font-size: 20px; }
+      #sems-charge-integration .semc-subtitle { font-size: 13px; }
+      #sems-charge-integration .semc-bottom { min-height: 64px; padding-bottom: env(safe-area-inset-bottom); }
+      #sems-charge-integration .semc-nav { gap: 3px; }
+      #sems-charge-integration .semc-nav > svg,
+      #sems-charge-integration .semc-nav-symbol { width: 22px; height: 22px; }
+      #sems-charge-integration .semc-source-icon { width: 25px; height: 25px; transform: scale(.88); }
+      #sems-charge-integration.semc-onboarding .semc-screen {
+        padding-top: calc(28px + env(safe-area-inset-top));
+        padding-bottom: calc(28px + env(safe-area-inset-bottom));
+      }
+      #sems-charge-integration .semc-map { height: clamp(180px, 32dvh, 270px); }
+      #sems-charge-integration .semc-detail { min-height: 44px; padding: 5px 0; font-size: 13px; }
+      #sems-charge-integration .semc-map-actions { gap: 6px; }
+      #sems-charge-integration .semc-primary,
+      #sems-charge-integration .semc-secondary { min-height: 40px; padding: 8px 11px; }
+      #sems-charge-integration .semc-back { min-height: 28px; margin-bottom: 4px; padding: 3px 0; }
+      #sems-charge-integration .semc-qr-identified { gap: 9px; margin-bottom: 8px; padding: 8px; font-size: 13px; }
+      #sems-charge-integration .semc-qr-symbol { width: 36px; height: 36px; }
+      #sems-charge-integration .semc-charge-input-row { gap: 6px; margin-top: 4px; }
+      #sems-charge-integration .semc-charge-input,
+      #sems-charge-integration .semc-charge-submit { min-height: 36px; padding: 7px 9px; }
+      #sems-charge-integration .semc-charge-target { margin-top: 3px; }
+      #sems-charge-integration .semc-checkout-summary { margin: 7px 0; padding: 2px 10px; font-size: 13px; }
+      #sems-charge-integration .semc-checkout-row { padding: 6px 0; }
+      #sems-charge-integration .semc-payment { gap: 4px; margin-bottom: 7px; }
+      #sems-charge-integration .semc-payment select { min-height: 36px; padding: 6px 9px; }
+      #sems-charge-integration .semc-quiet { min-height: 30px; padding: 5px 10px; }
+      #sems-charge-integration .semc-state-center { gap: 8px; padding: 20px 10px 10px; }
+      #sems-charge-integration .semc-ring { width: 150px; height: 150px; margin: 8px auto 16px; }
+      #sems-charge-integration .semc-ring-inner { width: 124px; height: 124px; }
+      #sems-charge-integration .semc-history-title { margin: 10px 0 4px; }
+      #sems-charge-integration .semc-rules { padding: 10px; }
+      #sems-charge-integration .semc-rule { padding: 8px 0; font-size: 13px; }
+    }
+  </style>
+
+  <div class="semc-wrap">
+    <article class="semc-phone" aria-label="Integração de carregadores comerciais no SEMS">
+      <header class="semc-header">
+        <img class="semc-header-logo" src="./ImagemGW/goodwe-charge-logo.png" alt="GoodWe Charge">
+        <div class="semc-head-row"><strong>Extensão</strong></div>
+        <span class="semc-running">Conectado</span>
+      </header>
+      <div class="semc-module-tabs" aria-label="Áreas de recarga">
+        <button type="button" data-screen="map" aria-pressed="true">Mapa</button>
+        <button type="button" data-screen="session" aria-pressed="false">Recarga</button>
+        <button type="button" data-screen="management" aria-pressed="false">Gestão</button>
+      </div>
+      <main class="semc-screen" id="semc-screen" aria-live="polite"></main>
+      <nav class="semc-bottom" aria-label="Navegação principal do SEMS">
+        <button type="button" class="semc-nav">
+          <span class="semc-source-icon home" aria-hidden="true"></span>
+          <span>Início</span>
+        </button>
+        <button type="button" class="semc-nav">
+          <span class="semc-source-icon devices" aria-hidden="true"></span>
+          <span>Dispositivos</span>
+        </button>
+        <button type="button" class="semc-nav is-charge" aria-current="page">
+          <svg class="semc-nav-symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m7.5 15.5 4.5 3.4 4.5-3.4"></path><path d="m13 4-3.2 7.3h3l-2 7.2 4.2-9.3h-3z"></path></svg>
+          <span>Recarga</span>
+        </button>
+        <button type="button" class="semc-nav">
+          <span class="semc-source-icon services" aria-hidden="true"></span>
+          <span>Serviços</span>
+        </button>
+        <button type="button" class="semc-nav">
+          <span class="semc-source-icon account" aria-hidden="true"></span>
+          <span>Conta</span>
+        </button>
+      </nav>
+    </article>
+  </div>
+
+  <script>
+    (() => {
+      const root = document.getElementById('sems-charge-integration');
+      const screen = root.querySelector('#semc-screen');
+      let current = 'extensionPrompt';
+      let liveMap = null;
+      let simulationTimer = null;
+      let selectedPlaceIndex = 0;
+      const places = [
+        { coords: [-23.563522, -46.652687], color: 'green', status: 'Livre', name: 'Shopping Cidade São Paulo', free: '8 vagas livres', code: 'GW-SP-012', bay: 'B12', power: 22 },
+        { coords: [-23.572583, -46.695667], color: 'green', status: 'Livre', name: 'Shopping Eldorado', free: '6 vagas livres', code: 'GW-SP-021', bay: 'A06', power: 60 },
+        { coords: [-23.610220, -46.666870], color: 'yellow', status: 'Semilotado', name: 'Shopping Ibirapuera', free: '3 vagas livres', code: 'GW-SP-034', bay: 'C03', power: 22 },
+        { coords: [-23.561420, -46.560480], color: 'red', status: 'Lotado', name: 'Shopping Anália Franco', free: '1 vaga livre', code: 'GW-SP-047', bay: 'D01', power: 60 },
+        { coords: [-23.622660, -46.699230], color: 'green', status: 'Livre', name: 'Morumbi Shopping', free: '7 vagas livres', code: 'GW-SP-052', bay: 'E07', power: 22 },
+        { coords: [-23.515880, -46.617390], color: 'gray', status: 'Em manutenção', name: 'Shopping Center Norte', free: 'Indisponível', code: 'GW-SP-061', bay: 'M01', power: 22, maintenance: true },
+        { coords: [-23.595520, -46.685200], color: 'yellow', status: 'Semilotado', name: 'Shopping Vila Olímpia', free: '2 vagas livres', code: 'GW-SP-068', bay: 'F02', power: 22 },
+        { coords: [-23.540620, -46.576590], color: 'green', status: 'Livre', name: 'Shopping Metrô Tatuapé', free: '5 vagas livres', code: 'GW-SP-075', bay: 'G05', power: 22 }
+      ];
+      const simulation = { percent: 24, startPercent: 24, target: 100, energy: 0, estimatedCost: 0, elapsedMinutes: 0, running: false, started: false, completed: false, stopped: false, paymentMethod: 'Pix', receiptId: 'GW-2026-08123', stationIndex: 0 };
+      const selectedPlace = () => places[selectedPlaceIndex];
+      const sessionPlace = () => places[simulation.stationIndex] || places[0];
+      const wazeUrl = place => `https://www.waze.com/ul?ll=${place.coords[0]}%2C${place.coords[1]}&navigate=yes&utm_source=goodwe_sems_prototype`;
+      const screens = {
+        extensionPrompt: `
+          <section class="semc-access" aria-labelledby="semc-extension-title">
+            <div class="semc-access-brand">GOODWE SEMS</div>
+            <span class="semc-extension-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="m7.5 15.5 4.5 3.4 4.5-3.4"></path><path d="m13 4-3.2 7.3h3l-2 7.2 4.2-9.3h-3z"></path></svg></span>
+            <h2 id="semc-extension-title">Habilitar extensão?</h2>
+            <p>Adicione a recarga comercial à sua conta SEMS para localizar e utilizar carregadores GoodWe.</p>
+            <div class="semc-access-actions"><button type="button" class="semc-primary" id="semc-enable-extension">Habilitar extensão</button><button type="button" class="semc-quiet" id="semc-decline-extension">Agora não</button></div>
+          </section>`,
+        semsLogin: `
+          <section class="semc-access" aria-labelledby="semc-login-title">
+            <div class="semc-access-brand">GOODWE SEMS</div>
+            <h2 id="semc-login-title">Entrar no SEMS</h2>
+            <p>A extensão será ativada após o acesso à sua conta.</p>
+            <form class="semc-access-form" id="semc-login-form" novalidate>
+              <label for="semc-login-email">Email<input class="semc-charge-input" id="semc-login-email" type="email" autocomplete="email" placeholder="seu@email.com"></label>
+              <label for="semc-login-password">Senha<input class="semc-charge-input" id="semc-login-password" type="password" autocomplete="current-password" placeholder="Digite sua senha"></label>
+              <span class="semc-charge-error" id="semc-login-error" role="alert" hidden></span>
+              <button type="submit" class="semc-primary" id="semc-login-submit">Entrar e ativar</button>
+              <button type="button" class="semc-quiet" id="semc-login-back">Voltar</button>
+            </form>
+          </section>`,
+        extensionDeclined: `
+          <section class="semc-access" aria-labelledby="semc-declined-title">
+            <div class="semc-access-brand">GOODWE SEMS</div>
+            <h2 id="semc-declined-title">Extensão não habilitada</h2>
+            <p>Você pode habilitar a recarga comercial quando quiser.</p>
+            <button type="button" class="semc-primary" id="semc-return-extension">Voltar</button>
+          </section>`,
+        map: () => {
+          const place = selectedPlace();
+          return `
+          <div class="semc-title-row"><div><h2>Carregadores próximos</h2><p class="semc-subtitle">8 locais em shoppings de São Paulo</p></div></div>
+          <div class="semc-map" id="semc-real-map" aria-label="Mapa interativo com oito pontos demonstrativos em shoppings de São Paulo">
+            <div class="semc-map-legend" aria-label="Legenda de disponibilidade"><span><i style="background:var(--semc-green)"></i>Livre</span><span><i style="background:var(--semc-yellow)"></i>Semilotado</span><span><i style="background:var(--semc-red)"></i>Lotado</span><span><i style="background:#7d828a"></i>Manutenção</span></div>
+          </div>
+          <div class="semc-detail" id="semc-detail"><div><strong>${place.name}</strong><br><span>${place.maintenance ? 'Offline' : 'Online'} · ${place.status}</span></div><strong>${place.free}</strong></div>
+          <div class="semc-map-actions"><a class="semc-secondary" id="semc-waze" href="${wazeUrl(place)}" target="_blank" rel="noopener" aria-label="Traçar rota no Waze para ${place.name}">Ir com Waze</a><button type="button" class="semc-primary" id="semc-open-identify" ${place.maintenance ? 'disabled' : ''}>${place.maintenance ? 'Carregadores em manutenção' : 'Digitar nome do carregador'}</button></div>`;
+        },
+        identify: () => {
+          const place = selectedPlace();
+          return `
+          <button type="button" class="semc-back" id="semc-identify-back-map">← Voltar ao mapa</button>
+          <div class="semc-title-row"><div><h2>Identificar carregador</h2><p class="semc-subtitle">Digite o nome exibido no equipamento</p></div></div>
+          <form id="semc-identify-form">
+            <div class="semc-charge-choice"><label for="semc-charger-name">Nome do carregador</label><input class="semc-charge-input" id="semc-charger-name" type="text" placeholder="Exemplo: GoodWe ${place.bay}" autocomplete="off" autocapitalize="words" aria-describedby="semc-charger-name-help semc-charger-name-error" style="width:100%;margin-top:8px"><span class="semc-charge-target" id="semc-charger-name-help">O nome fica na frente do carregador deste local.</span><span class="semc-charge-error" id="semc-charger-name-error" role="alert" hidden></span></div>
+            <button type="submit" class="semc-primary" style="margin-top:14px">Continuar</button>
+          </form>`;
+        },
+        checkout: () => {
+          const place = selectedPlace();
+          return `
+          <button type="button" class="semc-back" id="semc-back-map">← Voltar ao mapa</button>
+          <div class="semc-title-row"><div><h2>Recarga e pagamento</h2><p class="semc-subtitle">Confira antes de iniciar</p></div></div>
+          <div class="semc-qr-identified"><span class="semc-qr-symbol" aria-hidden="true">⚡</span><div><strong>GoodWe ${place.bay}</strong><br><span>${place.code} · Tipo 2 · ${place.power} kW</span><br><span>${place.name}</span></div></div>
+          <form id="semc-checkout-form">
+            <div class="semc-charge-choice"><label for="semc-charge-target-input">Porcentagem final desejada</label><div class="semc-charge-input-row"><input class="semc-charge-input" id="semc-charge-target-input" type="number" min="25" max="100" step="1" value="80" inputmode="numeric" aria-describedby="semc-charge-target-error"><button type="button" class="semc-charge-submit" id="semc-update-estimate">Calcular</button></div><span class="semc-charge-error" id="semc-charge-target-error" role="alert" hidden></span></div>
+            <div class="semc-checkout-summary" aria-live="polite"><div class="semc-checkout-row"><span>Carga atual</span><strong id="semc-checkout-current">24%</strong></div><div class="semc-checkout-row"><span>Energia estimada</span><strong id="semc-checkout-energy">33,6 kWh</strong></div><div class="semc-checkout-row"><span>Valor estimado</span><strong id="semc-checkout-cost">R$ 48,72</strong></div></div>
+            <div class="semc-payment"><label for="semc-payment-method">Forma de pagamento</label><select id="semc-payment-method"><option value="Pix">Pix</option><option value="Cartão Visa final 4821">Cartão Visa final 4821</option><option value="Carteira GoodWe">Carteira GoodWe</option><option value="recusado">Cartão recusado (demonstração)</option></select><span class="semc-inline-alert" id="semc-payment-error" role="alert" hidden></span></div>
+            <button type="submit" class="semc-primary" id="semc-pay-button">Pagar R$ 48,72</button>
+            <button type="button" class="semc-quiet" id="semc-cancel-checkout">Cancelar</button>
+          </form>`;
+        },
+        paymentApproved: () => `<div class="semc-state-center"><span class="semc-state-symbol" aria-hidden="true">✓</span><h2>Pagamento aprovado</h2><p>${simulation.paymentMethod}<br>Meta de ${Math.round(simulation.target)}% · ${formatMoney(simulation.estimatedCost)}</p><button type="button" class="semc-primary" id="semc-start-charge">Iniciar recarga</button></div>`,
+        session: () => {
+          if (!simulation.started) return `<div class="semc-state-center"><h2>Nenhuma recarga em andamento</h2><p>Escolha um local e digite o nome do carregador para começar.</p><button type="button" class="semc-primary" id="semc-empty-open-map">Ir para o mapa</button></div>`;
+          if (simulation.completed) return `<div class="semc-state-center"><span class="semc-state-symbol" aria-hidden="true">${simulation.stopped ? '■' : '✓'}</span><h2>${simulation.stopped ? 'Recarga interrompida' : 'Recarga concluída'}</h2><p>${Math.round(simulation.percent)}% · ${formatDecimal(simulation.energy)} kWh · ${simulation.elapsedMinutes} min</p><div class="semc-checkout-summary" style="width:100%"><div class="semc-checkout-row"><span>Valor final</span><strong>${formatMoney(simulation.energy * 1.45)}</strong></div><div class="semc-checkout-row"><span>Pagamento</span><strong>${simulation.paymentMethod}</strong></div></div><button type="button" class="semc-primary" id="semc-open-receipt">Ver comprovante</button></div>`;
+          return `<div class="semc-title-row"><div><h2>Andamento da recarga</h2><p class="semc-subtitle">${sessionPlace().name} · Vaga ${sessionPlace().bay} · <span id="semc-sim-time">0 min</span></p></div><span class="semc-running" id="semc-sim-status">Carregando</span></div><div class="semc-ring" id="semc-sim-ring" role="progressbar" aria-label="Progresso simulado da recarga" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(simulation.percent)}"><div class="semc-ring-inner"><div><strong id="semc-sim-percent">${Math.round(simulation.percent)}%</strong><span><span id="semc-sim-power">11,2</span> kW</span></div></div></div><p class="semc-session-target" id="semc-session-target">Meta: ${Math.round(simulation.target)}%</p><button type="button" class="semc-danger" id="semc-stop-charge">Interromper recarga</button>`;
+        },
+        stopConfirm: () => `<div class="semc-state-center"><h2>Interromper recarga?</h2><p>A cobrança será calculada somente até ${Math.round(simulation.percent)}%.</p><div class="semc-inline-actions" style="width:100%"><button type="button" class="semc-primary" id="semc-continue-charge">Continuar recarga</button><button type="button" class="semc-danger" id="semc-confirm-stop">Confirmar interrupção</button></div></div>`,
+        receipt: () => `<button type="button" class="semc-back" id="semc-back-session">← Voltar à recarga</button><div class="semc-title-row"><div><h2>Comprovante</h2><p class="semc-subtitle">${simulation.receiptId}</p></div></div><div class="semc-checkout-summary"><div class="semc-checkout-row"><span>Status</span><strong>${simulation.stopped ? 'Interrompida' : 'Concluída'}</strong></div><div class="semc-checkout-row"><span>Local</span><strong>${sessionPlace().name}</strong></div><div class="semc-checkout-row"><span>Carregador</span><strong>${sessionPlace().code} · ${sessionPlace().bay}</strong></div><div class="semc-checkout-row"><span>Carga final</span><strong>${Math.round(simulation.percent)}%</strong></div><div class="semc-checkout-row"><span>Energia</span><strong>${formatDecimal(simulation.energy)} kWh</strong></div><div class="semc-checkout-row"><span>Tempo</span><strong>${simulation.elapsedMinutes} min</strong></div><div class="semc-checkout-row"><span>Total</span><strong>${formatMoney(simulation.energy * 1.45)}</strong></div></div>`,
+        management: () => `
+          <div class="semc-title-row"><div><h2>Cobrança e rateio</h2><p class="semc-subtitle">Regras da Unidade Centro</p></div></div>
+          <section class="semc-rules">
+            <div class="semc-rule"><div><strong>Cobrança individual</strong><span>Visitantes e clientes</span></div><strong>R$ 1,45/kWh</strong></div>
+            <div class="semc-rule"><div><strong>Rateio interno</strong><span>Funcionários e frota</span></div><strong>Centro de custo</strong></div>
+          </section>
+          <h3 class="semc-history-title">Últimas recargas</h3><section class="semc-rules">${simulation.started ? `<div class="semc-rule"><div><strong>${sessionPlace().name}</strong><span>${simulation.completed ? (simulation.stopped ? 'Interrompida' : 'Concluída') : 'Em andamento'} · ${Math.round(simulation.percent)}%</span></div><strong>${simulation.completed ? formatMoney(simulation.energy * 1.45) : '—'}</strong></div>` : `<div class="semc-rule"><div><strong>Nenhuma recarga</strong><span>O histórico aparecerá aqui.</span></div></div>`}</section>${simulation.completed ? `<button type="button" class="semc-secondary" id="semc-history-receipt" style="width:100%;margin-top:10px">Ver comprovante</button>` : ''}`
+      };
+
+      function icons() {
+        if (window.lucide) window.lucide.createIcons({ attrs: { width: 24, height: 24, 'stroke-width': 2.1 } });
+      }
+
+      function formatDecimal(value) {
+        return value.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+      }
+
+      function formatMoney(value) {
+        return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      }
+
+      function updateSimulation() {
+        const percent = root.querySelector('#semc-sim-percent');
+        const power = root.querySelector('#semc-sim-power');
+        const time = root.querySelector('#semc-sim-time');
+        const status = root.querySelector('#semc-sim-status');
+        const ring = root.querySelector('#semc-sim-ring');
+        const targetLabel = root.querySelector('#semc-session-target');
+        const currentPower = simulation.running ? 11.2 + Math.sin(simulation.percent / 7) * 0.4 : 0;
+        const finished = simulation.percent >= simulation.target;
+
+        if (percent) percent.textContent = `${Math.round(simulation.percent)}%`;
+        if (power) power.textContent = formatDecimal(currentPower);
+        if (time) time.textContent = `${simulation.elapsedMinutes} min`;
+        if (status) status.textContent = !simulation.started ? 'Aguardando início' : finished ? 'Concluída' : 'Carregando';
+        if (targetLabel) targetLabel.textContent = `Meta: ${Math.round(simulation.target)}%`;
+        if (ring) {
+          ring.style.setProperty('--semc-progress', `${simulation.percent}%`);
+          ring.setAttribute('aria-valuenow', String(Math.round(simulation.percent)));
+        }
+      }
+
+      function ensureSimulationTimer() {
+        if (simulationTimer) return;
+        simulationTimer = window.setInterval(() => {
+          if (!simulation.running || simulation.percent >= simulation.target) return;
+          simulation.percent = Math.min(simulation.target, simulation.percent + 1);
+          simulation.energy = (simulation.percent - simulation.startPercent) * 0.6;
+          simulation.elapsedMinutes += 1;
+          if (simulation.percent >= simulation.target) {
+            simulation.running = false;
+            simulation.completed = true;
+            if (current === 'session') {
+              render();
+              return;
+            }
+          }
+          updateSimulation();
+        }, 900);
+      }
+
+      function initSimulation() {
+        updateSimulation();
+        ensureSimulationTimer();
+      }
+
+      function initAccess() {
+        root.querySelector('#semc-enable-extension')?.addEventListener('click', () => {
+          current = 'semsLogin';
+          render();
+        });
+        root.querySelector('#semc-decline-extension')?.addEventListener('click', () => {
+          current = 'extensionDeclined';
+          render();
+        });
+        root.querySelector('#semc-return-extension')?.addEventListener('click', () => {
+          current = 'extensionPrompt';
+          render();
+        });
+        root.querySelector('#semc-login-back')?.addEventListener('click', () => {
+          current = 'extensionPrompt';
+          render();
+        });
+
+        const form = root.querySelector('#semc-login-form');
+        const email = root.querySelector('#semc-login-email');
+        const password = root.querySelector('#semc-login-password');
+        const error = root.querySelector('#semc-login-error');
+        const submit = root.querySelector('#semc-login-submit');
+        form?.addEventListener('submit', async event => {
+          event.preventDefault();
+          const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email?.value.trim() || '');
+          if (!validEmail || !(password?.value || '').trim()) {
+            if (error) {
+              error.textContent = 'Digite um email e uma senha válidos.';
+              error.hidden = false;
+            }
+            return;
+          }
+
+          if (typeof window.semsFirebaseSignIn !== 'function') {
+            if (error) {
+              error.textContent = 'O serviço de login ainda está carregando. Tente novamente.';
+              error.hidden = false;
+            }
+            return;
+          }
+
+          if (submit) {
+            submit.disabled = true;
+            submit.textContent = 'Entrando...';
+          }
+
+          try {
+            await window.semsFirebaseSignIn(email.value.trim(), password.value);
+            current = 'map';
+            render();
+          } catch (loginError) {
+            const code = loginError?.code || '';
+            const incorrectCredentials = ['auth/invalid-credential', 'auth/invalid-login-credentials', 'auth/user-not-found', 'auth/wrong-password'].includes(code);
+            if (error) {
+              if (incorrectCredentials) error.textContent = 'Email ou senha incorretos.';
+              else if (code === 'auth/email-not-verified') error.textContent = 'Verifique seu email antes de entrar.';
+              else if (code === 'auth/too-many-requests') error.textContent = 'Muitas tentativas. Aguarde um pouco e tente novamente.';
+              else if (code === 'auth/network-request-failed') error.textContent = 'Sem conexão com o Firebase. Verifique sua internet.';
+              else error.textContent = 'Não foi possível entrar. Tente novamente.';
+              error.hidden = false;
+            }
+          } finally {
+            if (submit?.isConnected) {
+              submit.disabled = false;
+              submit.textContent = 'Entrar e ativar';
+            }
+          }
+        });
+        [email, password].forEach(field => field?.addEventListener('input', () => {
+          if (error) error.hidden = true;
+        }));
+      }
+
+      function initIdentify() {
+        const form = root.querySelector('#semc-identify-form');
+        const input = root.querySelector('#semc-charger-name');
+        const error = root.querySelector('#semc-charger-name-error');
+        const expectedName = `GoodWe ${selectedPlace().bay}`;
+        const normalize = value => value.trim().toLocaleLowerCase('pt-BR').replace(/\s+/g, ' ');
+
+        input?.focus();
+        form?.addEventListener('submit', event => {
+          event.preventDefault();
+          if (normalize(input?.value || '') !== normalize(expectedName)) {
+            if (error) {
+              error.textContent = `Carregador não encontrado. Confira o nome no equipamento (exemplo: ${expectedName}).`;
+              error.hidden = false;
+            }
+            return;
+          }
+          current = 'checkout';
+          render();
+        });
+        input?.addEventListener('input', () => {
+          if (error) error.hidden = true;
+        });
+        root.querySelector('#semc-identify-back-map')?.addEventListener('click', () => {
+          current = 'map';
+          render();
+        });
+      }
+
+      function initCheckout() {
+        const form = root.querySelector('#semc-checkout-form');
+        const input = root.querySelector('#semc-charge-target-input');
+        const error = root.querySelector('#semc-charge-target-error');
+        const energyOutput = root.querySelector('#semc-checkout-energy');
+        const costOutput = root.querySelector('#semc-checkout-cost');
+        const currentOutput = root.querySelector('#semc-checkout-current');
+        const payButton = root.querySelector('#semc-pay-button');
+        const paymentMethod = root.querySelector('#semc-payment-method');
+        const paymentError = root.querySelector('#semc-payment-error');
+        const minimumTarget = Math.min(100, Math.ceil(simulation.percent) + 1);
+        if (input) {
+          input.min = String(minimumTarget);
+          input.value = String(Math.max(minimumTarget, Math.round(simulation.target === 100 ? 80 : simulation.target)));
+        }
+        if (currentOutput) currentOutput.textContent = `${Math.round(simulation.percent)}%`;
+
+        const calculate = () => {
+          const requestedTarget = Number(input?.value);
+          if (!Number.isFinite(requestedTarget) || requestedTarget < minimumTarget || requestedTarget > 100) {
+            if (error) {
+              error.textContent = `Digite uma porcentagem entre ${minimumTarget}% e 100%.`;
+              error.hidden = false;
+            }
+            return null;
+          }
+          const target = Math.round(requestedTarget);
+          const estimatedEnergy = (target - simulation.percent) * 0.6;
+          const estimatedCost = estimatedEnergy * 1.45;
+          const formattedCost = estimatedCost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          if (input) input.value = String(target);
+          if (energyOutput) energyOutput.textContent = `${formatDecimal(estimatedEnergy)} kWh`;
+          if (costOutput) costOutput.textContent = `R$ ${formattedCost}`;
+          if (payButton) payButton.textContent = `Pagar R$ ${formattedCost}`;
+          if (error) {
+            error.textContent = '';
+            error.hidden = true;
+          }
+          return target;
+        };
+
+        root.querySelector('#semc-update-estimate')?.addEventListener('click', calculate);
+        input?.addEventListener('input', calculate);
+        form?.addEventListener('submit', event => {
+          event.preventDefault();
+          const target = calculate();
+          if (target === null) return;
+          if (paymentMethod?.value === 'recusado') {
+            if (paymentError) {
+              paymentError.textContent = 'Pagamento recusado. Escolha outra forma de pagamento.';
+              paymentError.hidden = false;
+            }
+            return;
+          }
+          simulation.target = target;
+          simulation.startPercent = simulation.percent;
+          simulation.energy = 0;
+          simulation.estimatedCost = (target - simulation.percent) * 0.6 * 1.45;
+          simulation.elapsedMinutes = 0;
+          simulation.paymentMethod = paymentMethod?.value || 'Pix';
+          simulation.stationIndex = selectedPlaceIndex;
+          simulation.started = false;
+          simulation.completed = false;
+          simulation.stopped = false;
+          simulation.running = false;
+          current = 'paymentApproved';
+          render();
+        });
+        root.querySelector('#semc-back-map')?.addEventListener('click', () => {
+          current = 'map';
+          render();
+        });
+        root.querySelector('#semc-cancel-checkout')?.addEventListener('click', () => {
+          current = 'map';
+          render();
+        });
+        calculate();
+      }
+
+      function initMap() {
+        const mapElement = root.querySelector('#semc-real-map');
+        if (!mapElement) return;
+        if (!window.L) {
+          mapElement.innerHTML = '<p class="semc-map-fallback">Conecte-se à internet para carregar o mapa.</p>';
+          return;
+        }
+
+        liveMap = L.map(mapElement, { zoomControl: false }).setView([-23.575, -46.640], 12);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+          maxZoom: 19,
+          subdomains: 'abcd',
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }).addTo(liveMap);
+
+        places.forEach((place, index) => {
+          const icon = L.divIcon({
+            className: 'semc-leaflet-icon',
+            html: `<span class="${place.color}" aria-hidden="true">${place.maintenance ? '🔧' : '⚡'}</span>`,
+            iconSize: [38, 38],
+            iconAnchor: [19, 19]
+          });
+          L.marker(place.coords, { icon, title: `${place.name}, ${place.status}, ${place.free}`, keyboard: true })
+            .addTo(liveMap)
+            .on('click', () => {
+              selectedPlaceIndex = index;
+              const detail = root.querySelector('#semc-detail');
+              const waze = root.querySelector('#semc-waze');
+              const identify = root.querySelector('#semc-open-identify');
+              if (detail) detail.innerHTML = `<div><strong>${place.name}</strong><br><span>${place.maintenance ? 'Offline' : 'Online'} · ${place.status}</span></div><strong>${place.free}</strong>`;
+              if (waze) {
+                waze.href = wazeUrl(place);
+                waze.setAttribute('aria-label', `Traçar rota no Waze para ${place.name}`);
+              }
+              if (identify) {
+                identify.disabled = Boolean(place.maintenance);
+                identify.textContent = place.maintenance ? 'Carregadores em manutenção' : 'Digitar nome do carregador';
+              }
+            });
+        });
+        liveMap.fitBounds(L.latLngBounds(places.map(place => place.coords)), { padding: [28, 28], animate: false });
+
+        requestAnimationFrame(() => {
+          if (!liveMap) return;
+          liveMap.invalidateSize({ animate: false });
+          requestAnimationFrame(() => liveMap?.invalidateSize({ animate: false }));
+        });
+      }
+
+      function render() {
+        if (liveMap) {
+          liveMap.stop();
+          liveMap.remove();
+          liveMap = null;
+        }
+        const onboardingScreens = ['extensionPrompt', 'semsLogin', 'extensionDeclined'];
+        root.classList.toggle('semc-onboarding', onboardingScreens.includes(current));
+        const selectedScreen = screens[current];
+        screen.innerHTML = typeof selectedScreen === 'function' ? selectedScreen() : selectedScreen;
+        root.querySelectorAll('[data-screen]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.screen === current)));
+        root.querySelectorAll('[data-place]').forEach(button => button.addEventListener('click', () => {
+          const [name, use, free] = button.dataset.place.split('|');
+          const detail = root.querySelector('#semc-detail');
+          if (detail) detail.innerHTML = `<div><strong>${name}</strong><br><span>${use}</span></div><strong>${free}</strong>`;
+        }));
+        icons();
+        if (onboardingScreens.includes(current)) initAccess();
+        if (current === 'map') initMap();
+        if (current === 'session') initSimulation();
+        if (current === 'identify') initIdentify();
+        if (current === 'checkout') initCheckout();
+        root.querySelector('#semc-open-identify')?.addEventListener('click', () => {
+          current = simulation.started && !simulation.completed ? 'session' : 'identify';
+          render();
+        });
+        root.querySelector('#semc-empty-open-map')?.addEventListener('click', () => { current = 'map'; render(); });
+        root.querySelector('#semc-start-charge')?.addEventListener('click', () => {
+          simulation.started = true;
+          simulation.running = simulation.percent < simulation.target;
+          current = 'session';
+          render();
+        });
+        root.querySelector('#semc-stop-charge')?.addEventListener('click', () => {
+          simulation.running = false;
+          current = 'stopConfirm';
+          render();
+        });
+        root.querySelector('#semc-continue-charge')?.addEventListener('click', () => {
+          simulation.running = true;
+          current = 'session';
+          render();
+        });
+        root.querySelector('#semc-confirm-stop')?.addEventListener('click', () => {
+          simulation.running = false;
+          simulation.completed = true;
+          simulation.stopped = true;
+          current = 'session';
+          render();
+        });
+        root.querySelector('#semc-open-receipt')?.addEventListener('click', () => { current = 'receipt'; render(); });
+        root.querySelector('#semc-history-receipt')?.addEventListener('click', () => { current = 'receipt'; render(); });
+        root.querySelector('#semc-back-session')?.addEventListener('click', () => { current = 'session'; render(); });
+      }
+
+      root.querySelectorAll('[data-screen]').forEach(button => button.addEventListener('click', () => {
+        current = button.dataset.screen;
+        render();
+      }));
+      render();
+    })();
+  </script>
+  <script type="module" src="./firebase-sems-auth.js"></script>
+</div>
