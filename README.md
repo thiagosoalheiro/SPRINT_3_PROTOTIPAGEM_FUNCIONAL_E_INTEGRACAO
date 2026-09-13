@@ -21,6 +21,15 @@ Gerenciamento inteligente de demanda para estações de recarga de veículos el�
 
 ---
 
+## 📂 Estrutura do Repositório
+
+| Pasta | Conteúdo |
+|---|---|
+| [`chargegrid/`](chargegrid/) | Firmware ESP32 (C++) e `diagram.json` do circuito simulado no Wokwi |
+| [`site/`](site/) | Dashboard web GOODWE EVSE Manager B2B (`index.html`, `style.css`, `app.js`) integrado ao Firebase |
+
+---
+
 ## 🧩 O Desafio / Problema
 
 Este estudo dedica-se a investigar a possibilidade de transformar dispositivos originalmente criados para uso doméstico em aplicações comerciais, focando no gerenciamento inteligente de demanda de potência, na implementação de sistemas de cobrança automatizados e na criação de interfaces voltadas a estabelecimentos como academias, shoppings e centros comerciais. Para firmar essa análise, o trabalho explora os pilares do ChargeGrid, estabelecendo uma conexão direta com o hardware da linha HCA G2. 
@@ -170,6 +179,8 @@ flowchart TD
 #### A. Painel Web de Gestão B2B (`GOODWE EVSE Manager B2B`)
 O painel de controle executivo (Web Dashboard) sincroniza via **Firebase** os parâmetros de operação do estacionamento. Ele exibe os indicadores de geração solar real-time, demanda total da estação e o teto do disjuntor. Além disso, disponibiliza os seletores para acionamento ou interrupção do carregamento por vaga individual e comandos globais da estação.
 
+> 💻 Código-fonte: [`site/`](site/) (`index.html`, `style.css`, `app.js`)
+
 <img width="1437" height="849" alt="image" src="https://github.com/user-attachments/assets/f8a38790-6f95-410d-8c04-bf20e8f7e46e" />
 
 #### B. Aplicativo Mobile do Motorista (Integrado ao SEMS e Firebase)
@@ -198,6 +209,8 @@ Para homologação das regras de *Load Balancing* e protocolo de comunicação, 
 - **Potenciômetros:** Emulam a variação do estado de carga (SOC) e da demanda solicitada em cada uma das 4 vagas.
 - **Push Buttons:** Simulam a conexão/desconexão física do cabo CCS no veículo.
 - **Display LCD 16x2:** Exibe os dados instantâneos locais (`11.0/40.0kW - Vagas 1/4 SOLAR`), transmitindo a telemetria via OCPP e Firebase para o sistema em nuvem.
+
+> 💻 Código-fonte: [`chargegrid/`](chargegrid/) (firmware ESP32 + `diagram.json` do Wokwi)
 
 <img width="771" height="522" alt="image" src="https://github.com/user-attachments/assets/55349b7f-9b4c-4b5b-ae70-c50c95e4f244" />
 
@@ -264,9 +277,3 @@ O desenvolvimento da **Sprint 3** consolidou os conceitos teóricos e práticos 
 O projeto **ChargeGrid Intelligence** comprova que a transformação de equipamentos de linha residencial/comercial GoodWe em uma rede B2B inteligente de recarga é plenamente viável, segura e altamente rentável.
 
 Através do alinhamento entre a camada física de potência (Inversores Híbridos, Baterias SEC1000S e Wallboxes HCA G2), a eletrônica embarcada (ESP32 via ISO 15118) e a nuvem B2B (Firebase/EVSE Manager), eliminou-se o gargalo físico de sobrecarga sem a necessidade de obras dispendiosas de ampliação da rede elétrica. A solução promove a sustentabilidade energética, maximiza a utilização de fontes renováveis e oferece uma jornada fluida e segura para o usuário final e para o operador comercial.
-
-
-
-
-
-
