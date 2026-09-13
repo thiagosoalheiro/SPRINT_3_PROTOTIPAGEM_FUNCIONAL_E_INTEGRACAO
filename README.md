@@ -2,7 +2,7 @@
  
 Gerenciamento inteligente de demanda para estações de recarga de veículos elétricos, integrando energia solar, armazenamento em bateria e automação em nuvem — desenvolvido com equipamentos **GoodWe**
  
-> 🎥 **Vídeo pitch:** https://youtu.be/ggT8hUnfNXI?si=upFxEk8xvHdklanF
+> 🎥 <a href="https://youtu.be/ggT8hUnfNXI?si=upFxEk8xvHdklanF">**Clique aqui para ver o vídeo pitch!**</a> 
 
 > 🏫 **Disciplina: Pensamento Computacional e Automação com Python e Soluções em Energias Renováveis e Sustentáveis** / **Sprint 3 — Prototipagem Funcional e Integração**
  
